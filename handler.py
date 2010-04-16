@@ -86,7 +86,7 @@ class MainHandler(webapp.RequestHandler):
 def main():
   application = webapp.WSGIApplication([('/(i|t|h)/(.+)', MainHandler)],
                                        debug=False)
-  logging.getLogger().setLevel(logging.DEBUG)
+  #logging.getLogger().setLevel(logging.DEBUG)
   util.run_wsgi_app(application)
 
 
