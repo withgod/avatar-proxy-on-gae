@@ -7,6 +7,12 @@ handlers:
 - url: /(.*\.(gif|png|jpg))
   static_files: \1
   upload: img/(.*\.(gif|png|jpg))
+- url: /favicon.ico
+  static_files: public/favicon.ico
+  upload: public/favicon\.ico
+- url: (.*?)/robots.txt
+  static_files: public/robots.txt
+  upload: public/robots\.txt
 - url: /(i|t|h)/.*
   script: handler.py
 - url: .*
