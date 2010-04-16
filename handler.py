@@ -19,21 +19,25 @@
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.api import urlfetch
+from google.appengine.api import memcache
 from django.utils import simplejson
-import re, datetime, logging
+import re, datetime, logging, pprint
 
+class AvatarModel:
+  data = None
+  content_type = None
+  def __init__(self, data, content_type):
+    self.data = data
+    self.content_type = content_type
 
 class MainHandler(webapp.RequestHandler):
-
-  content_type = 'text/plain'
 
   def getHatena(self, id):
     _tmp = "http://www.st-hatena.com/users/%s/%s/profile.gif" % (id[0:2], id)
     result = urlfetch.fetch(_tmp)
     logging.debug(int(result.headers.get('Content-Length')))
     if int(result.headers.get('Content-Length')) != 563: #allways return default image
-      self.content_type = 'image/gif'
-      return result.content
+      return AvatarModel(result.content, 'image/gif')
     return None
 
   def getTwitter(self, id):
@@ -45,39 +49,44 @@ class MainHandler(webapp.RequestHandler):
       _url = dect[0]['user']['profile_image_url']
       image = urlfetch.fetch(_url)
       if image.status_code == 200:
+        c_type = 'image/jpg'
         if re.search('\.png$', _url):
-          self.content_type = 'image/png'
+          c_type = 'image/png'
         elif re.search('\.gif$', _url):
-          self.content_type = 'image/gif'
-        else:
-          self.content_type = 'image/jpg'
-        return image.content
+          c_type = 'image/gif'
+        return AvatarModel(image.content, c_type)
 
     return None
 
   def get(self, type, id):
     ret = None
-    if type == 't':
-      ret = self.getTwitter(id)
-    elif type == 'h':
-      ret = self.getHatena(id)
-    else:
-      ret = self.getTwitter(id)
-      if ret is None:
+    ret = memcache.get('%s_%s' % (type, id))
+    if ret is None:
+      if type == 't':
+        ret = self.getTwitter(id)
+      elif type == 'h':
         ret = self.getHatena(id)
+      else:
+        ret = self.getTwitter(id)
+        if ret is None:
+          ret = self.getHatena(id)
+
+    pp = pprint.PrettyPrinter(indent=4)
+    logging.debug(ret.content_type)
 
     if ret is not None:
-      self.response.headers['Content-Type'] = self.content_type
+      memcache.add('%s_%s' % (type, id), ret, 86400) # 60 * 60 * 24
+      self.response.headers['Content-Type'] = ret.content_type
       self.response.headers['Cache-Control']='public, max-age=259200' # 60 * 60 * 24 * 3
       self.response.headers['Expires'] = (datetime.datetime.today() + datetime.timedelta(3)).strftime("%a, %d %b %Y %H:%M:%S GMT")
-      self.response.out.write(ret)
+      self.response.out.write(ret.data)
     else:
       self.redirect('/img/noimage.gif')
 
 def main():
   application = webapp.WSGIApplication([('/(i|t|h)/(.+)', MainHandler)],
                                        debug=False)
-  #logging.getLogger().setLevel(logging.DEBUG)
+  logging.getLogger().setLevel(logging.DEBUG)
   util.run_wsgi_app(application)
 
 
