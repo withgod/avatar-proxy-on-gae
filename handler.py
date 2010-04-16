@@ -46,15 +46,16 @@ class MainHandler(webapp.RequestHandler):
     result = urlfetch.fetch(_tmp)
     if result.status_code == 200:
       dect = simplejson.loads(result.content)
-      _url = dect[0]['user']['profile_image_url']
-      image = urlfetch.fetch(_url)
-      if image.status_code == 200:
-        c_type = 'image/jpg'
-        if re.search('\.png$', _url):
-          c_type = 'image/png'
-        elif re.search('\.gif$', _url):
-          c_type = 'image/gif'
-        return AvatarModel(image.content, c_type)
+      if len(dect) > 1: #skip no timeline user
+        _url = dect[0]['user']['profile_image_url']
+        image = urlfetch.fetch(_url)
+        if image.status_code == 200:
+          c_type = 'image/jpg'
+          if re.search('\.png$', _url):
+            c_type = 'image/png'
+          elif re.search('\.gif$', _url):
+            c_type = 'image/gif'
+          return AvatarModel(image.content, c_type)
 
     return None
 
