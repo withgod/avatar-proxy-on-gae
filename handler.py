@@ -72,9 +72,9 @@ class MainHandler(webapp.RequestHandler):
           ret = self.getHatena(id)
 
     pp = pprint.PrettyPrinter(indent=4)
-    logging.debug(ret.content_type)
 
     if ret is not None:
+      logging.debug(ret.content_type)
       memcache.add('%s_%s' % (type, id), ret, 86400) # 60 * 60 * 24
       self.response.headers['Content-Type'] = ret.content_type
       self.response.headers['Cache-Control']='public, max-age=259200' # 60 * 60 * 24 * 3
